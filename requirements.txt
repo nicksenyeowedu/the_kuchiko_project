@@ -1,0 +1,12 @@
+google-generativeai
+pypdf2
+neo4j
+python-dotenv
+pypdf
+openai
+langchain
+sentence-transformers
+python-telegram-bot
+pytz
+numpy
+faiss-cpu
