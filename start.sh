@@ -12,6 +12,184 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Detect OS and distribution
+detect_os() {
+    OS="unknown"
+    DISTRO="unknown"
+    PKG_MANAGER="unknown"
+
+    case "$(uname -s)" in
+        Linux*)
+            OS="linux"
+            # Detect Linux distribution
+            if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                DISTRO="$ID"
+            elif [ -f /etc/redhat-release ]; then
+                DISTRO="rhel"
+            elif [ -f /etc/debian_version ]; then
+                DISTRO="debian"
+            fi
+
+            # Set package manager based on distro
+            case "$DISTRO" in
+                ubuntu|debian|linuxmint|pop)
+                    PKG_MANAGER="apt"
+                    ;;
+                fedora)
+                    PKG_MANAGER="dnf"
+                    ;;
+                centos|rhel|rocky|almalinux)
+                    if command -v dnf &> /dev/null; then
+                        PKG_MANAGER="dnf"
+                    else
+                        PKG_MANAGER="yum"
+                    fi
+                    ;;
+                arch|manjaro|endeavouros)
+                    PKG_MANAGER="pacman"
+                    ;;
+                opensuse*|sles)
+                    PKG_MANAGER="zypper"
+                    ;;
+                alpine)
+                    PKG_MANAGER="apk"
+                    ;;
+            esac
+            ;;
+        Darwin*)
+            OS="macos"
+            DISTRO="macos"
+            if command -v brew &> /dev/null; then
+                PKG_MANAGER="brew"
+            fi
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            OS="windows"
+            DISTRO="windows"
+            ;;
+    esac
+
+    # Check for WSL
+    if [ -f /proc/version ] && grep -qi microsoft /proc/version; then
+        OS="wsl"
+    fi
+
+    echo -e "${BLUE}Detected OS: $OS ($DISTRO) - Package Manager: $PKG_MANAGER${NC}"
+}
+
+# Install Docker based on OS/distro
+install_docker() {
+    echo -e "${YELLOW}Docker is not installed. Installing automatically...${NC}"
+
+    case "$PKG_MANAGER" in
+        apt)
+            sudo apt-get update
+            sudo apt-get install -y docker.io docker-compose
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            ;;
+        dnf)
+            sudo dnf -y install dnf-plugins-core
+            sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+            sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            ;;
+        yum)
+            sudo yum install -y yum-utils
+            sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+            sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            ;;
+        pacman)
+            sudo pacman -Sy --noconfirm docker docker-compose
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            ;;
+        zypper)
+            sudo zypper install -y docker docker-compose
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker $USER
+            ;;
+        apk)
+            sudo apk add docker docker-compose
+            sudo rc-update add docker boot
+            sudo service docker start
+            sudo addgroup $USER docker
+            ;;
+        brew)
+            echo -e "${YELLOW}Installing Docker Desktop via Homebrew...${NC}"
+            brew install --cask docker
+            echo -e "${YELLOW}Please open Docker Desktop from Applications to complete setup.${NC}"
+            echo -e "${YELLOW}Then run this script again.${NC}"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}❌ Unsupported system: $DISTRO (package manager: $PKG_MANAGER)${NC}"
+            echo "Please install Docker manually from https://docs.docker.com/get-docker/"
+            exit 1
+            ;;
+    esac
+
+    echo -e "${GREEN}✓ Docker installed successfully${NC}"
+    echo -e "${YELLOW}Note: You may need to log out and back in for group changes to take effect.${NC}"
+}
+
+# Install Docker Compose based on OS/distro
+install_docker_compose() {
+    echo -e "${YELLOW}Docker Compose not found. Installing...${NC}"
+    case "$PKG_MANAGER" in
+        apt)
+            sudo apt-get install -y docker-compose
+            ;;
+        dnf|yum)
+            # Already installed with docker-compose-plugin
+            ;;
+        pacman)
+            sudo pacman -Sy --noconfirm docker-compose
+            ;;
+        zypper)
+            sudo zypper install -y docker-compose
+            ;;
+        apk)
+            sudo apk add docker-compose
+            ;;
+        *)
+            echo -e "${RED}❌ Please install Docker Compose manually${NC}"
+            exit 1
+            ;;
+    esac
+    echo -e "${GREEN}✓ Docker Compose installed${NC}"
+}
+
+# Start Docker daemon based on OS
+start_docker_daemon() {
+    echo -e "${YELLOW}Docker daemon is not running. Starting...${NC}"
+    case "$PKG_MANAGER" in
+        apt|dnf|yum|pacman|zypper)
+            sudo systemctl start docker
+            ;;
+        apk)
+            sudo service docker start
+            ;;
+        brew)
+            echo -e "${YELLOW}Please open Docker Desktop from Applications${NC}"
+            exit 1
+            ;;
+        *)
+            echo -e "${RED}❌ Please start Docker manually${NC}"
+            exit 1
+            ;;
+    esac
+}
+
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -28,12 +206,12 @@ if [ ! -f ".env" ]; then
     echo -e "${RED}❌ Error: .env file not found!${NC}"
     echo ""
     echo "Please create a .env file first:"
-    echo "  1. Copy the example file:  cp .env.example .env"
-    echo "  2. Edit it with your API keys:  nano .env"
+    echo "  nano .env"
     echo ""
-    echo "Required values:"
-    echo "  - NVIDIA_API_KEY (get from https://build.nvidia.com/)"
-    echo "  - TELEGRAM_BOT_TOKEN (get from @BotFather on Telegram)"
+    echo "Add the following content:"
+    echo "  NVIDIA_API_KEY=your_nvidia_api_key_here"
+    echo "  TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here"
+    echo "  PDF_FILE=kg.pdf"
     echo ""
     exit 1
 fi
@@ -63,35 +241,32 @@ fi
 echo -e "${GREEN}✓ Environment variables validated${NC}"
 echo -e "${GREEN}✓ PDF file found: $PDF_FILE${NC}"
 
-# Step 3: Check if Docker is installed
+# Step 3: Check and install Docker if needed
 echo -e "${YELLOW}[3/5] Checking Docker installation...${NC}"
+
+# Detect OS first
+detect_os
+
 if ! command -v docker &> /dev/null; then
-    echo -e "${RED}❌ Error: Docker is not installed!${NC}"
-    echo ""
-    echo "Please install Docker first:"
-    echo "  - macOS: brew install --cask docker"
-    echo "  - Windows: Download from https://docker.com"
-    echo "  - Linux: sudo apt-get install docker.io docker-compose"
-    echo ""
-    exit 1
+    install_docker
 fi
 
 if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo -e "${RED}❌ Error: Docker Compose is not installed!${NC}"
-    exit 1
+    install_docker_compose
 fi
 echo -e "${GREEN}✓ Docker is installed${NC}"
 
 # Step 4: Check if Docker daemon is running
 echo -e "${YELLOW}[4/5] Checking Docker daemon...${NC}"
-if ! docker info &> /dev/null; then
-    echo -e "${RED}❌ Error: Docker daemon is not running!${NC}"
-    echo ""
-    echo "Please start Docker:"
-    echo "  - macOS/Windows: Open Docker Desktop"
-    echo "  - Linux: sudo systemctl start docker"
-    echo ""
-    exit 1
+# Try without sudo first, then with sudo
+if ! docker info &> /dev/null && ! sudo docker info &> /dev/null; then
+    start_docker_daemon
+    sleep 2
+    if ! sudo docker info &> /dev/null; then
+        echo -e "${RED}❌ Failed to start Docker daemon${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Docker daemon started${NC}"
 fi
 echo -e "${GREEN}✓ Docker daemon is running${NC}"
 
@@ -99,11 +274,17 @@ echo -e "${GREEN}✓ Docker daemon is running${NC}"
 echo -e "${YELLOW}[5/5] Starting Kuchiko services...${NC}"
 echo ""
 
+# Determine if we need sudo for docker commands
+SUDO_CMD=""
+if ! docker ps &> /dev/null; then
+    SUDO_CMD="sudo"
+fi
+
 # Determine docker-compose command
-if docker compose version &> /dev/null; then
-    COMPOSE_CMD="docker compose"
+if $SUDO_CMD docker compose version &> /dev/null; then
+    COMPOSE_CMD="$SUDO_CMD docker compose"
 else
-    COMPOSE_CMD="docker-compose"
+    COMPOSE_CMD="$SUDO_CMD docker-compose"
 fi
 
 # Stop any existing containers
