@@ -1,0 +1,34 @@
+# Environment variables
+.env
+
+# Data files (generated at runtime)
+data/
+
+# Log files
+logs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Processing logs (generated during KG creation)
+entity_merge_log.txt
+entity_extraction_log.txt
+kg_processing_report_*.txt
