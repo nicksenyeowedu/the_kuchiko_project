@@ -45,7 +45,7 @@ The setup script automatically detects your operating system and installs Docker
 ### Step 1: Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/hybrid_kg_rag.git
+https://github.com/nicksenyeowedu/the_kuchiko_project.git
 cd hybrid_kg_rag
 ```
 
@@ -425,3 +425,4 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
