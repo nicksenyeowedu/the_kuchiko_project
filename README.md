@@ -46,7 +46,7 @@ The setup script automatically detects your operating system and installs Docker
 
 ```bash
 https://github.com/nicksenyeowedu/the_kuchiko_project.git
-cd hybrid_kg_rag
+cd the_kuchiko_project
 ```
 
 ### Step 2: Add your PDF file
@@ -425,4 +425,5 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
 
