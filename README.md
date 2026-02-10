@@ -45,8 +45,8 @@ The setup script automatically detects your operating system and installs Docker
 ### Step 1: Clone the repository
 
 ```bash
-https://github.com/nicksenyeowedu/the_kuchiko_project.git
-cd hybrid_kg_rag
+git clone https://github.com/nicksenyeowedu/the_kuchiko_project.git
+cd the_kuchiko_project
 ```
 
 ### Step 2: Add your PDF file
@@ -236,6 +236,11 @@ docker-compose logs -f
 docker-compose restart
 ```
 
+### Start fresh installation - only use if know how to use
+```bash
+docker system prune -a
+```
+
 ### Rebuild from scratch
 
 **Linux/macOS:**
@@ -248,6 +253,11 @@ bash start.sh             # Rebuild everything
 ```powershell
 docker-compose down -v    # Remove all data
 .\start.ps1               # Rebuild everything
+```
+
+### Rebuild the kg only
+```bash
+docker compose up --build init-kg
 ```
 
 ---
@@ -364,7 +374,7 @@ If Docker can't auto-install, install it manually:
 
 Make sure you're running from the project directory:
 ```bash
-cd hybrid_kg_rag
+cd the_kuchiko_project
 bash start.sh
 ```
 
@@ -425,4 +435,8 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
+
+
+
 
