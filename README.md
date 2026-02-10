@@ -255,6 +255,11 @@ docker-compose down -v    # Remove all data
 .\start.ps1               # Rebuild everything
 ```
 
+### Rebuild the kg only
+```bash
+docker compose up --build init-kg
+```
+
 ---
 
 ## Configuration
@@ -430,6 +435,7 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
 
 
 
