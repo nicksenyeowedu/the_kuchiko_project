@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info:*)",
+      "Bash(docker version:*)",
+      "Bash(wsl --list:*)"
+    ]
+  }
+}

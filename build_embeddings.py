@@ -31,6 +31,7 @@ import numpy as np
 import faiss
 from neo4j import GraphDatabase, basic_auth
 from openai import OpenAI
+from token_tracker import tracker
 
 # Configure logging
 logging.basicConfig(
@@ -80,18 +81,22 @@ driver = GraphDatabase.driver(MEMGRAPH_URI, auth=basic_auth(MEMGRAPH_USER, MEMGR
 
 def get_embedding(text: str, input_type: str = "passage") -> List[float]:
     """Get embedding vector from NVIDIA NIM.
-    
+
     Args:
         text: Text to embed
         input_type: 'query' or 'passage'
     """
     try:
+        t0 = time.time()
         response = nim_client.embeddings.create(
             input=[text],
             model=NIM_EMBEDDING_MODEL,
             encoding_format="float",
             extra_body={"input_type": input_type, "truncate": "NONE"}
         )
+        elapsed_ms = (time.time() - t0) * 1000
+        tracker.log_embedding([text], response=response, caller="build_embeddings.get_embedding",
+                              elapsed_ms=elapsed_ms)
         return response.data[0].embedding
     except Exception as e:
         logger.error(f"Error getting embedding for '{text[:50]}...': {e}")
@@ -111,12 +116,16 @@ def get_embeddings_batch(texts: List[str], input_type: str = "passage", max_retr
     """
     for attempt in range(max_retries):
         try:
+            t0 = time.time()
             response = nim_client.embeddings.create(
                 input=texts,
                 model=NIM_EMBEDDING_MODEL,
                 encoding_format="float",
                 extra_body={"input_type": input_type, "truncate": "NONE"}
             )
+            elapsed_ms = (time.time() - t0) * 1000
+            tracker.log_embedding(texts, response=response, caller="build_embeddings.get_embeddings_batch",
+                                  elapsed_ms=elapsed_ms)
             return [item.embedding for item in response.data]
         except Exception as e:
             if "429" in str(e) or "Too Many Requests" in str(e):
@@ -382,51 +391,62 @@ def verify_index():
 def main():
     """Main function to build embeddings and FAISS index."""
     
+    # Load tracker state from createKG.py for a unified build report
+    tracker.load_state()
+
     print("=" * 80)
     print("FAISS Embeddings Builder for Hybrid RAG Chatbot")
     print("=" * 80)
     print()
-    
+
     start_time = datetime.now()
     
     # Step 1: Extract entities from Memgraph
     print("Step 1: Extracting entities from Memgraph...")
+    tracker.start_step("Entity Extraction from KG")
     entity_names, entity_texts, entity_metadata = extract_entities_from_kg()
-    
+    tracker.end_step("Entity Extraction from KG")
+
     if not entity_names:
         logger.error("No entities found! Make sure you've run createKG.py first.")
         return
-    
+
     print(f"✓ Found {len(entity_names)} entities")
     print()
-    
+
     # Step 2: Generate embeddings
     print("Step 2: Generating embeddings using NVIDIA NIM...")
+    tracker.start_step("Embedding Generation (NIM API)")
     embeddings = generate_embeddings(entity_texts)
-    
+    tracker.end_step("Embedding Generation (NIM API)")
+
     if not embeddings or len(embeddings) != len(entity_names):
         logger.error("Failed to generate embeddings for all entities!")
         return
-    
+
     print(f"✓ Generated {len(embeddings)} embeddings")
     print()
-    
+
     # Step 3: Build FAISS index
     print("Step 3: Building FAISS index...")
+    tracker.start_step("FAISS Index Build")
     index = build_faiss_index(embeddings)
-    
+    tracker.end_step("FAISS Index Build")
+
     if not index:
         logger.error("Failed to build FAISS index!")
         return
-    
+
     print(f"✓ Built FAISS index with {index.ntotal} vectors")
     print()
-    
+
     # Step 4: Save to disk
     print("Step 4: Saving to disk...")
+    tracker.start_step("Save to Disk")
     save_index_and_metadata(index, entity_names, entity_metadata)
+    tracker.end_step("Save to Disk")
     print()
-    
+
     # Step 5: Verify
     print("Step 5: Verifying saved files...")
     success = verify_index()
@@ -446,6 +466,11 @@ def main():
         print("❌ FAILED! Please check the error messages above.")
     print("=" * 80)
     
+    # Write build report
+    report = tracker.write_report()
+    print()
+    print(report)
+
     # Cleanup
     driver.close()
 

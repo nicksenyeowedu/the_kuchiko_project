@@ -40,6 +40,7 @@ from pypdf import PdfReader
 from neo4j import GraphDatabase, basic_auth
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
+from token_tracker import tracker
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -84,7 +85,10 @@ driver = GraphDatabase.driver(MEMGRAPH_URI, auth=basic_auth(MEMGRAPH_USER, MEMGR
 def get_embedding(text: str) -> List[float]:
     """Generate embedding for text using sentence-transformers."""
     try:
+        t0 = time.time()
         embedding = embedding_model.encode(text, convert_to_tensor=False)
+        elapsed_ms = (time.time() - t0) * 1000
+        tracker.log_local_embedding(texts_count=1, caller="createKG.get_embedding", elapsed_ms=elapsed_ms)
         return embedding.tolist()
     except Exception as e:
         logger.warning(f"Failed to generate embedding: {e}")
@@ -276,6 +280,7 @@ def ask_nim(prompt: str, max_output_tokens: int = 8000, temperature: float = 0.0
 
     for attempt in range(retry + 1):
         try:
+            t0 = time.time()
             response = nim_client.chat.completions.create(
                 model=NIM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
@@ -283,6 +288,9 @@ def ask_nim(prompt: str, max_output_tokens: int = 8000, temperature: float = 0.0
                 max_tokens=max_output_tokens,
                 top_p=0.7
             )
+            elapsed_ms = (time.time() - t0) * 1000
+            tracker.log_chat_completion(response, caller="createKG.ask_nim",
+                                        prompt_preview=prompt[:100], elapsed_ms=elapsed_ms)
             # Extract text from response
             if response.choices and len(response.choices) > 0:
                 return response.choices[0].message.content
@@ -638,8 +646,10 @@ def process_pdf(path: str, max_workers: int = 4):
     """Process PDF with parallel segment processing."""
     doc_id = str(uuid.uuid4())
     start_time = datetime.now()
-    
+
+    tracker.start_step("PDF Extraction")
     pages = extract_pdf_pages(path)
+    tracker.end_step("PDF Extraction")
     n = len(pages)
     logger.info(f"Processing {n} pages with document ID: {doc_id}")
     
@@ -662,20 +672,24 @@ def process_pdf(path: str, max_workers: int = 4):
     }
     
     # Cluster pages using embedding-based approach
+    tracker.start_step("Page Clustering")
     clusters = recursive_cluster_pages(pages)
+    tracker.end_step("Page Clustering")
     stats['total_segments'] = len(clusters)
-    
+
     # Prepare segments
     segments = []
     for cluster in clusters:
         merged = "\n\n---PAGE_BREAK---\n\n".join([pages[idx] for idx in cluster])
         segments.append({'indices': cluster, 'text': merged})
-    
+
     # Process segments in parallel
+    tracker.start_step("KG Extraction & Insertion")
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(process_segment, seg, doc_id) for seg in segments]
         results = [f.result() for f in as_completed(futures)]
-    
+    tracker.end_step("KG Extraction & Insertion")
+
     processed = sum(1 for r in results if r)
     logger.info(f"Successfully processed {processed}/{len(segments)} segments")
     
@@ -778,8 +792,13 @@ def process_pdf(path: str, max_workers: int = 4):
     
     # Validate and cleanup
     validate_and_cleanup_memgraph(doc_id)
+
+    # Save tracker state so build_embeddings.py can produce a unified report
+    tracker.save_state()
+    logger.info(f"Tracker state saved for unified report")
+    logger.info(f"Total API tokens used: {tracker.get_summary()['grand_total_api_tokens']:,}")
     logger.info('Processing complete')
-    
+
     return doc_id
 
 

@@ -66,11 +66,9 @@ Write-Color "OK PDF file found: $pdfFile" "Green"
 Write-Color "[3/5] Checking Docker installation..." "Yellow"
 
 $dockerInstalled = $false
-try {
-    $null = docker --version 2>$null
+docker --version >$null 2>&1
+if ($LASTEXITCODE -eq 0) {
     $dockerInstalled = $true
-} catch {
-    $dockerInstalled = $false
 }
 
 if (-not $dockerInstalled) {
@@ -122,11 +120,9 @@ Write-Color "OK Docker is installed" "Green"
 Write-Color "[4/5] Checking Docker daemon..." "Yellow"
 
 $dockerRunning = $false
-try {
-    $null = docker info 2>$null
+docker info >$null 2>&1
+if ($LASTEXITCODE -eq 0) {
     $dockerRunning = $true
-} catch {
-    $dockerRunning = $false
 }
 
 if (-not $dockerRunning) {
@@ -155,11 +151,9 @@ Write-Host ""
 
 # Determine docker-compose command
 $composeCmd = "docker-compose"
-try {
-    $null = docker compose version 2>$null
+docker compose version >$null 2>&1
+if ($LASTEXITCODE -eq 0) {
     $composeCmd = "docker compose"
-} catch {
-    $composeCmd = "docker-compose"
 }
 
 # Stop any existing containers
@@ -172,12 +166,6 @@ Write-Color "Building and starting containers..." "Blue"
 Write-Color "(This may take a few minutes on first run)" "Yellow"
 Write-Host ""
 
-& cmd /c "$composeCmd up -d --build"
-
-Write-Host ""
-Write-Color "========================================" "Green"
-Write-Color "   Kuchiko is starting up!" "Green"
-Write-Color "========================================" "Green"
 Write-Host ""
 Write-Host "The bot is initializing. This includes:"
 Write-Host "  1. Starting Memgraph database"
@@ -188,12 +176,11 @@ Write-Host ""
 Write-Color "First-time setup can take 5-10 minutes." "Yellow"
 Write-Host ""
 Write-Host "Useful commands:"
-Write-Host "  View logs:     $composeCmd logs -f"
-Write-Host "  Stop bot:      $composeCmd down"
+Write-Host "  Stop bot:      Ctrl+C, then: $composeCmd down"
 Write-Host "  Restart:       $composeCmd restart"
 Write-Host ""
-Write-Color "Watching logs (Ctrl+C to exit)..." "Blue"
+Write-Color "Building and starting containers (Ctrl+C to stop)..." "Blue"
 Write-Host ""
 
-# Follow logs
-& cmd /c "$composeCmd logs -f"
+# Run in foreground so build progress + logs are visible in this terminal
+& cmd /c "$composeCmd up --build"

@@ -1,24 +1,19 @@
 # Dockerfile for Kuchiko Telegram Chatbot
+
+# ---- Single stage: all deps have pre-built wheels, no compiler needed ----
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first (for better caching)
+# Install Python dependencies (all have pre-built wheels for linux/amd64)
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY chatbot_telegram.py .
 COPY build_embeddings.py .
 COPY createKG.py .
+COPY token_tracker.py .
 
 # Note: The following files are NOT copied into the image:
 # - export_chat_history.py (optional utility, not needed in container)
