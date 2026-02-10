@@ -236,6 +236,11 @@ docker-compose logs -f
 docker-compose restart
 ```
 
+### Start fresh installation - only use if know how to use
+```bash
+docker system prune -a
+```
+
 ### Rebuild from scratch
 
 **Linux/macOS:**
@@ -364,7 +369,7 @@ If Docker can't auto-install, install it manually:
 
 Make sure you're running from the project directory:
 ```bash
-cd hybrid_kg_rag
+cd the_kuchiko_project
 bash start.sh
 ```
 
@@ -425,6 +430,7 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
 
 
 
