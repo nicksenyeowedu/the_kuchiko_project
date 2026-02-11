@@ -114,6 +114,7 @@ A `.env` file is already included in the project. Open it and fill in your actua
 NVIDIA_API_KEY=nvapi-your-actual-key-here
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
 PDF_FILE=kg.pdf
+MAX_WORKERS=20
 ```
 
 ### Step 4: Run the setup script
@@ -670,6 +671,7 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
 
 
 
