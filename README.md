@@ -467,7 +467,7 @@ Build statistics from running the full pipeline (PDF extraction, KG creation, FA
 
 ### Token Usage (Per Experiment)
 
-Results from 10 experiments across macOS and Windows.
+Results from 10 experiments.
 
 | Exp | LLM Calls | LLM Tokens | Embed Calls | Embed Tokens | Local Embed Calls | Total API Tokens | Build Time |
 |-----|-----------|------------|-------------|--------------|-------------------|-----------------|------------|
@@ -671,6 +671,7 @@ If you encounter issues:
 1. Check the [Troubleshooting](#troubleshooting) section
 2. Review the logs: `docker-compose logs -f`
 3. Open an issue on GitHub
+
 
 
 
