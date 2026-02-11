@@ -242,6 +242,7 @@ docker system prune -a
 | `MEMGRAPH_URI` | No | `bolt://localhost:7687` | Memgraph connection URI |
 | `MEMGRAPH_USER` | No | `memgraph` | Memgraph username |
 | `MEMGRAPH_PASS` | No | `memgraph` | Memgraph password |
+| `MAX_WORKERS` | No | `4` | Number of parallel workers for KG processing |
 
 ### Changing the PDF File
 

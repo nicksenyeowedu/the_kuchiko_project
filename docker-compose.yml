@@ -38,6 +38,7 @@ services:
       - MEMGRAPH_USER=memgraph
       - MEMGRAPH_PASS=memgraph
       - PDF_PATH=/app/knowledge_base.pdf
+      - MAX_WORKERS=${MAX_WORKERS:-4}
     volumes:
       - ./createKG.py:/app/createKG.py:ro
       - ./build_embeddings.py:/app/build_embeddings.py:ro

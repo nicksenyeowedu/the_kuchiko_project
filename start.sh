@@ -313,5 +313,12 @@ echo ""
 echo -e "${BLUE}Building and starting containers (Ctrl+C to stop)...${NC}"
 echo ""
 
-# Run in foreground so build progress + logs are visible in this terminal
-$COMPOSE_CMD up --build
+# Build images first so build output is visible
+$COMPOSE_CMD build
+
+# Start containers in detached mode, then immediately follow logs
+$COMPOSE_CMD up -d
+echo ""
+echo -e "${GREEN}✅ Containers started. Following logs...${NC}"
+echo ""
+$COMPOSE_CMD logs -f

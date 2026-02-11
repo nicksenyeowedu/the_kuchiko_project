@@ -45,6 +45,12 @@ from token_tracker import tracker
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
+# Silence noisy HTTP request logs from libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
+
 # --------- Configuration ---------
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 if not NVIDIA_API_KEY:
@@ -86,7 +92,7 @@ def get_embedding(text: str) -> List[float]:
     """Generate embedding for text using sentence-transformers."""
     try:
         t0 = time.time()
-        embedding = embedding_model.encode(text, convert_to_tensor=False)
+        embedding = embedding_model.encode(text, convert_to_tensor=False, show_progress_bar=False)
         elapsed_ms = (time.time() - t0) * 1000
         tracker.log_local_embedding(texts_count=1, caller="createKG.get_embedding", elapsed_ms=elapsed_ms)
         return embedding.tolist()
@@ -221,7 +227,7 @@ def deduplicate_entities(entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 f.write(f"... and {len(comparison_log) - 100} more comparisons\n")
             f.write("\n")
         
-        logger.info(f"Merge log written to {log_file}")
+        # logger.info(f"Merge log written to {log_file}")
     
     return list(merged.values())
 
@@ -313,18 +319,18 @@ def recursive_cluster_pages(pages: List[str]) -> List[List[int]]:
     # Generate embeddings for page summaries (first 500 chars)
     page_embeddings = []
     total_pages = len(pages)
+    # Log progress every 10% so docker logs shows meaningful updates
+    log_interval = max(1, total_pages // 10)
     for i, p in enumerate(pages):
         summary = p[:500] if p else ""
         emb = get_embedding(summary)
         page_embeddings.append(emb)
-        pct = int((i + 1) / total_pages * 100)
-        bar_len = 30
-        filled = int(bar_len * (i + 1) / total_pages)
-        bar = '█' * filled + '░' * (bar_len - filled)
-        sys.stdout.write(f'\r  Clustering pages: |{bar}| {pct}% ({i + 1}/{total_pages})')
-        sys.stdout.flush()
-    sys.stdout.write('\n')
-    sys.stdout.flush()
+        if (i + 1) % log_interval == 0 or (i + 1) == total_pages:
+            pct = int((i + 1) / total_pages * 100)
+            bar_len = 30
+            filled = int(bar_len * (i + 1) / total_pages)
+            bar = '█' * filled + '░' * (bar_len - filled)
+            logger.info(f"Clustering pages: |{bar}| {pct}% ({i + 1}/{total_pages})")
     
     # Simple hierarchical clustering: group consecutive similar pages
     clusters = []
@@ -378,8 +384,8 @@ Respond with ONLY valid JSON. Do NOT include markdown fences or code blocks.
                 content = item.get('content', '').strip() if isinstance(item, dict) else str(item)
                 cleaned.append({'title': title or 'Section', 'content': content})
             return cleaned
-    except Exception:
-        logger.exception("Failed to parse JSON from NIM for refine_boundaries. Falling back to whole-text single section.")
+    except Exception as e:
+        logger.warning(f"Failed to parse refine_boundaries JSON (using fallback): {str(e)[:150]}")
     # fallback
     return [{'title': 'FullSegment', 'content': text}]
 
@@ -439,11 +445,11 @@ Return ONLY valid JSON (no markdown, no explanations):
             if rel_type:
                 discovered_relation_types.add(rel_type)
         
-        # Log discovered ontology periodically
-        if len(discovered_entity_types) % 5 == 0:
-            logger.info(f"Discovered entity types so far: {sorted(discovered_entity_types)}")
-        if len(discovered_relation_types) % 5 == 0:
-            logger.info(f"Discovered relation types so far: {sorted(discovered_relation_types)}")
+        # Log discovered ontology periodically (commented out to reduce log noise)
+        # if len(discovered_entity_types) % 5 == 0:
+        #     logger.info(f"Discovered entity types so far: {sorted(discovered_entity_types)}")
+        # if len(discovered_relation_types) % 5 == 0:
+        #     logger.info(f"Discovered relation types so far: {sorted(discovered_relation_types)}")
         
         # Deduplicate entities
         kg['entities'] = deduplicate_entities(kg['entities'])
@@ -454,8 +460,8 @@ Return ONLY valid JSON (no markdown, no explanations):
             kg['raw_sentences'] = [{'id': f's{j}', 'text': s, 'page_index': None} for j, s in enumerate(sentences)]
         
         return kg
-    except Exception:
-        logger.exception('Failed to parse KG JSON from NVIDIA NIM')
+    except Exception as e:
+        logger.warning(f"Failed to parse KG JSON from NIM (using fallback): {str(e)[:150]}")
         # Fallback
         sentences = [s.strip() for s in text.split('\n') if s.strip()]
         return {
@@ -467,13 +473,35 @@ Return ONLY valid JSON (no markdown, no explanations):
 
 # --------- Memgraph Insertions (Lossless) ---------
 
-def insert_kg_into_memgraph(kg: Dict[str, Any], page_indices: List[int], segment_id: str, doc_id: str = None):
+def insert_kg_into_memgraph(kg: Dict[str, Any], page_indices: List[int], segment_id: str, doc_id: str = None, max_retries: int = 5):
     """Insert KG with hierarchical structure: Document → Segment → Section → KG.
     Also creates embeddings for entities for similarity queries.
+    Retries on Memgraph TransientError (conflicting transactions from parallel writes).
     """
     if not doc_id:
         doc_id = str(uuid.uuid4())
-    
+
+    for attempt in range(max_retries):
+        try:
+            _insert_kg_into_memgraph_inner(kg, page_indices, segment_id, doc_id)
+            return  # Success
+        except Exception as e:
+            error_str = str(e)
+            # Retry on transient/conflict errors
+            if "TransientError" in error_str or "conflicting transactions" in error_str.lower() or "Cannot resolve" in error_str:
+                wait_time = (2 ** attempt) * 0.5 + (hash(segment_id) % 10) * 0.1  # Backoff + jitter
+                if attempt < max_retries - 1:
+                    logger.warning(f"Memgraph conflict on {segment_id}, retrying in {wait_time:.1f}s ({attempt+1}/{max_retries})...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Memgraph conflict on {segment_id} after {max_retries} retries, giving up: {e}")
+                    raise
+            else:
+                raise  # Non-transient error, don't retry
+
+
+def _insert_kg_into_memgraph_inner(kg: Dict[str, Any], page_indices: List[int], segment_id: str, doc_id: str):
+    """Inner function that performs the actual Memgraph insertion (called by retry wrapper)."""
     with driver.session() as session:
         # Create Document node (root)
         session.run(
@@ -562,7 +590,7 @@ def insert_kg_into_memgraph(kg: Dict[str, Any], page_indices: List[int], segment
                 src=src, tgt=tgt, evidence=evidence, score=evidence_score
             )
 
-        logger.info(f'Inserted KG into Memgraph (segment_id={segment_id}, entities={len(kg.get("entities", []))}, relations={len(kg.get("relationships", []))})')
+        # logger.info(f'Inserted KG into Memgraph (segment_id={segment_id}, entities={len(kg.get("entities", []))}, relations={len(kg.get("relationships", []))})')
 
 def validate_and_cleanup_memgraph(doc_id: str):
     """Validate graph integrity (orphan cleanup skipped for Memgraph compatibility)."""
@@ -604,22 +632,22 @@ def process_segment(segment_data: Dict[str, Any], doc_id: str) -> bool:
     try:
         indices, merged_text = segment_data['indices'], segment_data['text']
         segment_id = f"seg-{'-'.join(str(x) for x in indices)}"
-        
+
         # Refine boundaries
         sections = refine_boundaries(merged_text)
-        
+
         for si, sec in enumerate(sections):
             title = sec.get('title', f"Section_{si}")
             content = sec.get('content', '')
             section_segment_id = f"{segment_id}-s{si}"
-            
+
             # Extract KG
             kg = extract_kg(content, section_title=title)
-            
+
             # Log extracted entities
             entities = kg.get('entities', [])
             relationships = kg.get('relationships', [])
-            
+
             if entities:
                 with open("entity_extraction_log.txt", 'a', encoding='utf-8') as f:
                     f.write(f"\n{'='*80}\n")
@@ -633,7 +661,7 @@ def process_segment(segment_data: Dict[str, Any], doc_id: str) -> bool:
                         etype = e.get('type', 'N/A')
                         mentions = e.get('mentions', [])
                         f.write(f"  • {eid}: '{name}' (type={etype}) - {len(mentions)} mentions\n")
-                    
+
                     f.write(f"\nExtracted {len(relationships)} relationships:\n")
                     for r in relationships:
                         src = r.get('source', 'N/A')
@@ -642,17 +670,24 @@ def process_segment(segment_data: Dict[str, Any], doc_id: str) -> bool:
                         evidence = r.get('evidence', [])
                         f.write(f"  • {src} -[{rel}]-> {tgt} ({len(evidence)} evidence)\n")
                     f.write("\n")
-            
+
             # Insert to Memgraph
             insert_kg_into_memgraph(kg, indices, section_segment_id, doc_id)
-        
+
+            # Log each section completion
+            logger.info(f"  {section_segment_id}, entities={len(entities)}, relations={len(relationships)} OK")
+
         return True
     except Exception as e:
         logger.exception(f"Failed to process segment: {e}")
         return False
 
-def process_pdf(path: str, max_workers: int = 4):
+def process_pdf(path: str, max_workers: int = None):
     """Process PDF with parallel segment processing."""
+    if max_workers is None:
+        max_workers = int(os.getenv("MAX_WORKERS", "4"))
+    logger.info(f"Using {max_workers} parallel workers (set MAX_WORKERS in .env to change)")
+
     doc_id = str(uuid.uuid4())
     start_time = datetime.now()
 
@@ -703,14 +738,10 @@ def process_pdf(path: str, max_workers: int = 4):
         bar_len = 30
         filled = int(bar_len * completed / total) if total else bar_len
         bar = '█' * filled + '░' * (bar_len - filled)
-        sys.stdout.write(f'\r  Progress: |{bar}| {pct}% ({completed}/{total} segments, {success} OK)')
-        sys.stdout.flush()
-        if completed == total:
-            sys.stdout.write('\n')
-            sys.stdout.flush()
+        # Use logger.info so each update appears as a new line in docker logs
+        logger.info(f"Progress: |{bar}| {pct}% ({completed}/{total} segments, {success} OK)")
 
     logger.info(f"Processing {total_segments} segments...")
-    print_progress(0, total_segments, 0)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(process_segment, seg, doc_id): i for i, seg in enumerate(segments)}

@@ -40,6 +40,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Silence noisy HTTP request logs from libraries
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 # --------- Configuration ---------
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
 
@@ -233,18 +238,14 @@ def generate_embeddings(entity_texts: List[str]) -> List[List[float]]:
     
     all_embeddings = []
     total_batches = (len(entity_texts) + BATCH_SIZE - 1) // BATCH_SIZE
-    # NVIDIA NIM limit: 40 TPM (transactions per minute) = 1 request per 1.5s
-    DELAY_BETWEEN_BATCHES = 2.0  # 2 seconds between batches (safe for 40 TPM)
-    
+
     for i in range(0, len(entity_texts), BATCH_SIZE):
         batch = entity_texts[i:i + BATCH_SIZE]
         batch_num = (i // BATCH_SIZE) + 1
-        
-        logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} entities)...")
-        
+
         # Try batch embedding first with retry logic
         batch_embeddings = get_embeddings_batch(batch, input_type="passage")
-        
+
         if batch_embeddings:
             all_embeddings.extend(batch_embeddings)
         else:
@@ -254,20 +255,17 @@ def generate_embeddings(entity_texts: List[str]) -> List[List[float]]:
                 embedding = get_embedding(text, input_type="passage")
                 if embedding:
                     all_embeddings.append(embedding)
-                    time.sleep(1.5)  # 1.5s delay to respect 40 TPM limit
                 else:
                     logger.error(f"Failed to embed: {text[:50]}...")
                     return None
-        
-        # Progress update
-        if batch_num % 10 == 0:
-            logger.info(f"Progress: {len(all_embeddings)}/{len(entity_texts)} embeddings generated")
-        
-        # Rate limiting: delay between batches (except last batch)
-        if i + BATCH_SIZE < len(entity_texts):
-            logger.info(f"Waiting {DELAY_BETWEEN_BATCHES}s before next batch to avoid rate limits...")
-            time.sleep(DELAY_BETWEEN_BATCHES)
-    
+
+        # Progress bar
+        pct = int(batch_num / total_batches * 100)
+        bar_len = 30
+        filled = int(bar_len * batch_num / total_batches)
+        bar = '█' * filled + '░' * (bar_len - filled)
+        logger.info(f"Embeddings: |{bar}| {pct}% ({len(all_embeddings)}/{len(entity_texts)})")
+
     logger.info(f"Successfully generated {len(all_embeddings)} embeddings")
     return all_embeddings
 
