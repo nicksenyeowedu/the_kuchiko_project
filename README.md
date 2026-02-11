@@ -486,14 +486,30 @@ Results from 10 experiments across macOS and Windows.
 | 9 | 624 | 612,289 | 97 | 160,007 | 5,564 | 772,296 | 10m 10s |
 | 10 | 629 | 608,357 | 93 | 154,346 | 5,418 | 762,697 | 10m 35s |
 
+### LLM Token Breakdown (Input vs Output)
+
+| Exp | LLM Calls | Input Tokens | Output Tokens | Total LLM Tokens |
+|-----|-----------|-------------|---------------|-----------------|
+| 1 | 650 | 300,409 | 319,455 | 619,864 |
+| 2 | 631 | 292,613 | 349,615 | 642,228 |
+| 3 | 638 | 295,570 | 327,468 | 623,038 |
+| 4 | 628 | 291,625 | 327,545 | 619,170 |
+| 5 | 610 | 284,300 | 331,409 | 615,709 |
+| 6 | 638 | 295,552 | 335,358 | 630,910 |
+| 7 | 613 | 285,501 | 312,160 | 597,661 |
+| 8 | 628 | 291,705 | 331,709 | 623,414 |
+| 9 | 624 | 290,045 | 322,244 | 612,289 |
+| 10 | 629 | 291,827 | 316,524 | 608,351 |
+| **Avg** | **629** | **291,915** | **327,349** | **619,264** |
+
 ### Average Token Usage (All Experiments)
 
-| Component | Avg API Calls | Avg Tokens | Avg Time/Call |
-|-----------|---------------|------------|---------------|
-| LLM Chat Completions (NVIDIA NIM) | 629 | 619,264 | _TBD_ |
-| Embedding API (NVIDIA NIM) | 97 | 161,171 | _TBD_ |
-| Local Embeddings (sentence-transformers) | 5,558 | N/A (no API cost) | _TBD_ |
-| **Grand Total** | | **780,434** | |
+| Component | Avg API Calls | Avg Input Tokens | Avg Output Tokens | Avg Total Tokens |
+|-----------|---------------|-----------------|-------------------|-----------------|
+| LLM Chat Completions (NVIDIA NIM) | 629 | 291,915 | 327,349 | 619,264 |
+| Embedding API (NVIDIA NIM) | 97 | 161,171 | — | 161,171 |
+| Local Embeddings (sentence-transformers) | 5,558 | N/A | N/A | N/A (no API cost) |
+| **Grand Total** | | | | **780,434** |
 
 ### Build Time (All Experiments)
 
