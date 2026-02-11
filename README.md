@@ -9,34 +9,37 @@ A Telegram chatbot that answers questions using a knowledge graph built from you
 - **Telegram Interface**: Easy-to-use chat interface via Telegram
 - **Conversation Memory**: Remembers context within conversations
 - **Multi-user Support**: Handles multiple users simultaneously
-- **Auto-Setup**: Automatically detects your OS and installs Docker if needed
 
 ## Prerequisites
 
-Before starting, you only need:
+Before starting, you need:
 
 - A **NVIDIA NIM API key** (free tier available)
 - A **Telegram Bot Token**
+- **Docker** installed and running on your machine
 
-**Note:** Docker will be automatically installed by the setup script if not present.
+### Installing Docker
+
+Download and install Docker from the official website: **[https://www.docker.com/get-started/](https://www.docker.com/get-started/)**
+
+> **Important:**
+> - **Windows & macOS**: You must install Docker Desktop and **start it manually** before running the setup script.
+> - **Linux**: Docker installation and startup is handled automatically by the setup script.
 
 ---
 
 ## Supported Platforms
 
-The setup script automatically detects your operating system and installs Docker using the appropriate package manager:
-
-| OS | Distribution | Package Manager | Auto-Install |
-|----|--------------|-----------------|--------------|
-| Linux | Ubuntu, Debian, Linux Mint, Pop!_OS | apt | ✅ Yes |
-| Linux | Fedora | dnf | ✅ Yes |
-| Linux | CentOS, RHEL, Rocky, AlmaLinux | dnf/yum | ✅ Yes |
-| Linux | Arch, Manjaro, EndeavourOS | pacman | ✅ Yes |
-| Linux | openSUSE, SLES | zypper | ✅ Yes |
-| Linux | Alpine | apk | ✅ Yes |
-| macOS | All versions | Homebrew | ✅ Yes (requires manual Docker Desktop launch) |
-| Windows | WSL2 | Uses Linux method | ✅ Yes |
-| Windows | Native | winget/Chocolatey | ✅ Yes (requires Docker Desktop launch) |
+| OS | Distribution | Docker Setup |
+|----|--------------|--------------|
+| Linux | Ubuntu, Debian, Linux Mint, Pop!_OS | Automatic (apt) |
+| Linux | Fedora | Automatic (dnf) |
+| Linux | CentOS, RHEL, Rocky, AlmaLinux | Automatic (dnf/yum) |
+| Linux | Arch, Manjaro, EndeavourOS | Automatic (pacman) |
+| Linux | openSUSE, SLES | Automatic (zypper) |
+| Linux | Alpine | Automatic (apk) |
+| macOS | All versions | [Install manually](https://www.docker.com/get-started/) — start Docker Desktop before running the script |
+| Windows | WSL2 / Native | [Install manually](https://www.docker.com/get-started/) — start Docker Desktop before running the script |
 
 ---
 
@@ -53,13 +56,10 @@ cd the_kuchiko_project
 
 Place your knowledge base PDF in the project folder. Name it `kg.pdf` or use a custom name (update `.env` accordingly).
 
-### Step 3: Create your environment file
+### Step 3: Configure your environment file
 
-```bash
-nano .env
-```
+A `.env` file is already included in the project. Open it and fill in your actual API keys:
 
-Add the following content (replace with your actual keys):
 ```env
 NVIDIA_API_KEY=nvapi-your-actual-key-here
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token-here
@@ -85,14 +85,14 @@ start.bat
 
 That's it! The script will:
 1. Detect your operating system
-2. Install Docker automatically (if not installed)
-3. Start the Docker daemon
+2. On Linux: install Docker automatically if not installed
+3. Start the Docker daemon (Linux only — on Windows/macOS, make sure Docker Desktop is already running)
 4. Build and launch all services
 5. Show you the logs
 
-**First time running?** If Docker was just installed, you may need to:
-- **Linux:** Run `newgrp docker` or log out/in for permissions
-- **Windows/macOS:** Start Docker Desktop manually, then run the script again
+**First time running?**
+- **Linux:** If Docker was just installed, you may need to run `newgrp docker` or log out/in for permissions
+- **Windows/macOS:** Make sure Docker Desktop is running before executing the script
 
 See [Troubleshooting](#troubleshooting) if you encounter issues.
 
@@ -126,8 +126,8 @@ When you run `bash start.sh`, it performs these steps:
 ```
 [1/5] Checking environment file...     → Validates .env exists
 [2/5] Validating environment variables... → Checks API keys are set
-[3/5] Checking Docker installation...  → Auto-installs Docker if missing
-[4/5] Checking Docker daemon...        → Starts Docker if not running
+[3/5] Checking Docker installation...  → Auto-installs Docker if missing (Linux only)
+[4/5] Checking Docker daemon...        → Starts Docker if not running (Linux only)
 [5/5] Starting Kuchiko services...     → Builds and launches containers
 ```
 
@@ -143,12 +143,11 @@ When you run `bash start.sh`, it performs these steps:
 
 When you run `bash start.sh` for the first time on a fresh system:
 
-1. **Docker Installation** (if not present)
-   - The script detects your OS and installs Docker automatically
-   - You'll be prompted for your sudo password
-   - Your user is added to the `docker` group
+1. **Docker Setup**
+   - **Linux:** The script detects your distro and installs Docker automatically. You'll be prompted for your sudo password and your user is added to the `docker` group.
+   - **Windows/macOS:** Make sure you have [Docker Desktop](https://www.docker.com/get-started/) installed and running before proceeding.
 
-2. **Permission Note**
+2. **Permission Note (Linux only)**
    - After Docker installs, you may need to run `newgrp docker` or log out/in
    - The script attempts to handle this automatically with sudo
 
@@ -195,51 +194,15 @@ Once running, open Telegram and start chatting with your bot:
 
 ---
 
-## Managing the Bot
+## Common Commands
 
-### Start the bot
-
-**Linux/macOS:**
-```bash
-bash start.sh
-```
-
-**Windows:**
-```powershell
-.\start.ps1
-```
-
-### Stop the bot
-
-**Linux/macOS:**
-```bash
-bash stop.sh
-```
-
-**Windows:**
-```powershell
-.\stop.ps1
-```
-
-**Any platform:**
-```bash
-docker-compose down
-```
-
-### View logs
-```bash
-docker-compose logs -f
-```
-
-### Restart
-```bash
-docker-compose restart
-```
-
-### Start fresh installation - only use if know how to use
-```bash
-docker system prune -a
-```
+| Action | Linux/macOS | Windows (PowerShell) |
+|--------|-------------|----------------------|
+| **Start** | `bash start.sh` | `.\start.ps1` |
+| **Stop** | `bash stop.sh` | `.\stop.ps1` |
+| **Stop (any platform)** | `docker-compose down` | `docker-compose down` |
+| **View logs** | `docker-compose logs -f` | `docker-compose logs -f` |
+| **Restart** | `docker-compose restart` | `docker-compose restart` |
 
 ### Rebuild from scratch
 
@@ -255,9 +218,14 @@ docker-compose down -v    # Remove all data
 .\start.ps1               # Rebuild everything
 ```
 
-### Rebuild the kg only
+### Rebuild the knowledge graph only
 ```bash
 docker compose up --build init-kg
+```
+
+### Full Docker cleanup (advanced — removes all Docker data)
+```bash
+docker system prune -a
 ```
 
 ---
@@ -341,15 +309,14 @@ bash start.sh
 ### Rate limit errors
 The NVIDIA NIM free tier has rate limits. If you see "429 Too Many Requests" errors, wait a few minutes and try again.
 
-### macOS: Docker Desktop not starting
-On macOS, after Homebrew installs Docker Desktop, you need to manually open it from Applications once. Then run the script again.
-
-### Windows: Docker Desktop not running
+### macOS/Windows: Docker Desktop not running
 
 If you see "Docker daemon is not running":
-1. Open Docker Desktop from the Start Menu
-2. Wait for it to fully start (check the system tray icon)
+1. Open Docker Desktop (from Applications on macOS, or Start Menu on Windows)
+2. Wait for it to fully start (check the system tray/menu bar icon)
 3. Run the script again
+
+> Docker Desktop must be running before you execute the setup script on Windows and macOS. Download it from [https://www.docker.com/get-started/](https://www.docker.com/get-started/) if you haven't already.
 
 ### Windows: PowerShell execution policy error
 
@@ -361,14 +328,6 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 # Or run the script with bypass:
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
-
-### Windows: winget or Chocolatey not found
-
-If Docker can't auto-install, install it manually:
-1. Download from https://www.docker.com/products/docker-desktop/
-2. Run the installer
-3. Start Docker Desktop
-4. Run the script again
 
 ### Script says "command not found" or "permission denied"
 
@@ -390,7 +349,7 @@ chmod +x start.sh
 
 ```
 kuchiko/
-├── start.sh                # Linux/macOS setup script (auto-installs Docker)
+├── start.sh                # Linux/macOS setup script
 ├── start.ps1               # Windows PowerShell setup script
 ├── start.bat               # Windows batch file (runs start.ps1)
 ├── stop.sh                 # Stop the bot (Linux/macOS)
