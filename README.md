@@ -2,6 +2,37 @@
 
 A Telegram chatbot that answers questions using a knowledge graph built from your PDF documents. Powered by NVIDIA NIM, Memgraph, and a hybrid RAG (Retrieval-Augmented Generation) architecture.
 
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+  - [Installing Docker](#installing-docker)
+  - [Getting Your API Keys](#getting-your-api-keys)
+- [Supported Platforms](#supported-platforms)
+- [Quick Start](#quick-start)
+- [What the Setup Script Does](#what-the-setup-script-does)
+- [First Time Setup - What to Expect](#first-time-setup---what-to-expect)
+- [Usage](#usage)
+- [Common Commands](#common-commands)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Project Structure](#project-structure)
+- [Models Used](#models-used)
+- [Build Statistics](#build-statistics)
+  - [Test Configuration](#test-configuration)
+  - [Token Usage (Per Experiment)](#token-usage-per-experiment)
+  - [LLM Token Breakdown (Input vs Output)](#llm-token-breakdown-input-vs-output)
+  - [Average Token Usage (All Experiments)](#average-token-usage-all-experiments)
+  - [Build Time (All Experiments)](#build-time-all-experiments)
+  - [Rate Limit Testing](#rate-limit-testing)
+- [Estimated Cost (Alternative Providers)](#estimated-cost-alternative-providers)
+- [Technical Documentation](#technical-documentation)
+- [TODO](#todo)
+- [License](#license)
+- [Support](#support)
+
+---
+
 ## Features
 
 - **PDF to Knowledge Graph**: Automatically extracts entities and relationships from your PDF
@@ -25,6 +56,25 @@ Download and install Docker from the official website: **[https://www.docker.com
 > **Important:**
 > - **Windows & macOS**: You must install Docker Desktop and **start it manually** before running the setup script.
 > - **Linux**: Docker installation and startup is handled automatically by the setup script.
+
+### Getting Your API Keys
+
+#### NVIDIA NIM API Key
+
+1. Go to [NVIDIA Build](https://build.nvidia.com/)
+2. Sign in or create a free account
+3. Navigate to any model (e.g., DeepSeek)
+4. Click "Get API Key" or find it in your account settings
+5. Copy your API key (starts with `nvapi-`)
+
+#### Telegram Bot Token
+
+1. Open Telegram and search for **@BotFather**
+2. Start a chat and send `/newbot`
+3. Follow the prompts:
+   - Enter a **name** for your bot (e.g., "My Knowledge Bot")
+   - Enter a **username** for your bot (must end in `bot`, e.g., "my_knowledge_bot")
+4. BotFather will give you a **token** - copy it (looks like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
 
 ---
 
@@ -102,27 +152,6 @@ That's it! The script will:
 - **Windows/macOS:** Make sure Docker Desktop is running before executing the script
 
 See [Troubleshooting](#troubleshooting) if you encounter issues.
-
----
-
-## Getting Your API Keys
-
-### NVIDIA NIM API Key
-
-1. Go to [NVIDIA Build](https://build.nvidia.com/)
-2. Sign in or create a free account
-3. Navigate to any model (e.g., DeepSeek)
-4. Click "Get API Key" or find it in your account settings
-5. Copy your API key (starts with `nvapi-`)
-
-### Telegram Bot Token
-
-1. Open Telegram and search for **@BotFather**
-2. Start a chat and send `/newbot`
-3. Follow the prompts:
-   - Enter a **name** for your bot (e.g., "My Knowledge Bot")
-   - Enter a **username** for your bot (must end in `bot`, e.g., "my_knowledge_bot")
-4. BotFather will give you a **token** - copy it (looks like `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
 
 ---
 
@@ -423,40 +452,6 @@ This project uses three models, each serving a different role in the pipeline:
 
 ---
 
-## Technical Documentation
-
-For a detailed explanation of the entire pipeline architecture, including:
-
-- PDF extraction and semantic chunking
-- Knowledge graph creation with LLM entity extraction
-- Embedding generation and FAISS index building
-- Hybrid RAG retrieval (Vector Search + Graph Expansion)
-- Response generation pipeline
-
-See **[ARCHITECTURE.md](ARCHITECTURE.md)**
-
----
-
-## TODO
-
-- [x] PDF extraction and semantic chunking
-- [x] Knowledge graph creation with LLM entity extraction
-- [x] Embedding-based entity deduplication
-- [x] FAISS vector index for fast search
-- [x] Hybrid RAG retrieval (vector search + graph traversal)
-- [x] Telegram bot interface with conversation memory
-- [x] Parallel processing with configurable workers
-- [x] Cross-platform support (Windows, macOS, Linux)
-- [x] Automated Docker setup for Linux
-- [x] Retry logic for Memgraph transaction conflicts
-- [x] Run build experiments
-- [x] Calculate average token usage across multiple runs
-- [ ] Estimated cost comparison for alternative LLMs
-- [ ] Option to use other LLM providers (Eg: Anthropic, OpenAI, Gemini, etc.)
-
-
----
-
 ## Build Statistics
 
 Build statistics from running the full pipeline (PDF extraction, KG creation, FAISS index).
@@ -517,19 +512,149 @@ Results from 10 experiments across macOS and Windows.
 |-------|-------|-------|-------|-------|-------|-------|-------|-------|--------|-------------|
 | 7m 21s | 6m 16s | 6m 3s | 7m 16s | 6m 39s | 8m 6s | 7m 7s | 7m 53s | 10m 10s | 10m 35s | **7m 45s** |
 
+### Rate Limit Testing
+
+NVIDIA NIM's free tier enforces a **40 RPM (requests per minute)** limit. Since `createKG.py` uses parallel workers to process PDF segments concurrently, we tested different `MAX_WORKERS` values to find the optimal setting that maximizes throughput without hitting rate limits.
+
+Each segment requires **3 API calls** (1 refine boundary + 2 entity extraction calls), so `N` workers means up to `N × 3` concurrent API calls in flight.
+
+| Workers | Concurrent Calls | OK | Rate Limited | Errors | Time | Effective RPM |
+|---------|------------------|----|-------------|--------|------|---------------|
+| 5 | 15 | 15 | 0 | 0 | 69.5s | 13 |
+| 10 | 30 | 30 | 0 | 0 | 137.9s | 13 |
+| 15 | 45 | 45 | 0 | 0 | 89.2s | 30 |
+| 20 | 60 | 60 | 0 | 0 | 157.4s | 23 |
+| 25 | 75 | 75 | 0 | 0 | 219.8s | 20 |
+| 30 | 90 | 90 | 0 | 0 | 211.3s | 26 |
+
+**Why 20 workers?** While no configuration triggered rate limiting in this test, the results show diminishing returns beyond 20 workers. At 15 workers, effective RPM peaked at 30, but 20 workers provides a better balance between parallelism and resource usage. Beyond 20, time increases significantly (219s+ for 25-30 workers) with no RPM improvement — the API's server-side queuing and response times become the bottleneck, not the rate limit. Additionally, higher worker counts consume more CPU, memory, and network connections on the host machine, which can degrade overall performance.
+
+> **Note:** Set `MAX_WORKERS` based on your machine's capabilities. High worker counts require more CPU, memory, and network connections. If you experience slowdowns or crashes, reduce `MAX_WORKERS` in your `.env` file. A good starting point is **4-10 workers** for most machines, scaling up to **20** only if your system can handle it.
+
 ---
 
-## Estimated Cost (Alternative LLMs)
+## Estimated Cost (Alternative Providers)
 
-If you were to use a paid LLM instead of the NVIDIA NIM free tier, the estimated cost per build would be:
+Estimated cost per build if using paid LLM and embedding providers instead of NVIDIA NIM free tier. Based on average token usage from our experiments:
 
-| Provider | Model | Input Cost | Output Cost | Estimated Total |
-|----------|-------|------------|-------------|-----------------|
-| NVIDIA NIM | DeepSeek V3.1 | Free | Free | **$0.00** |
-| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+- **LLM:** ~291,900 input tokens + ~327,300 output tokens per build
+- **Embeddings:** ~161,200 tokens per build
 
-> Costs calculated based on average token usage of ~780,000 total API tokens per build (~619,000 LLM + ~161,000 embedding).
+> Prices as of February 2026.
+
+### Table 1: LLM Pricing
+
+| Provider | Model | Input ($/1M tokens) | Output ($/1M tokens) |
+|----------|-------|--------------------|--------------------|
+| OpenAI | gpt-5.2 | $1.75 | $14.00 |
+| OpenAI | gpt-5.1 | $1.25 | $10.00 |
+| OpenAI | gpt-5 | $1.25 | $10.00 |
+| OpenAI | gpt-5-mini | $0.25 | $2.00 |
+| OpenAI | gpt-5-nano | $0.05 | $0.40 |
+| Google | Gemini 3 Pro Preview | $2.00 | $12.00 |
+| Google | Gemini 3 Flash Preview | $0.50 | $3.00 |
+| Google | Gemini 2.5 Pro | $1.25 | $10.00 |
+| Google | Gemini 2.5 Flash | $0.30 | $2.50 |
+| Google | Gemini 2.5 Flash-Lite | $0.10 | $0.40 |
+| Google | Gemini 2.0 Flash | $0.10 | $0.40 |
+| Google | Gemini 2.0 Flash-Lite | $0.075 | $0.30 |
+| Anthropic | Claude Opus 4.6 | $5.00 | $25.00 |
+| Anthropic | Claude Opus 4.5 | $5.00 | $25.00 |
+| Anthropic | Claude Opus 4.1 | $15.00 | $75.00 |
+| Anthropic | Claude Opus 4 | $15.00 | $75.00 |
+| Anthropic | Claude Sonnet 4.5 | $3.00 | $15.00 |
+| NVIDIA NIM | DeepSeek V3.1 | Free | Free |
+
+### Table 2: Embedding Pricing
+
+| Provider | Model | Cost ($/1M tokens) |
+|----------|-------|--------------------|
+| OpenAI | text-embedding-3-small | $0.02 |
+| OpenAI | text-embedding-3-large | $0.13 |
+| OpenAI | text-embedding-ada-002 | $0.10 |
+| Google | gemini-embedding-001 | $0.15 |
+| Voyage AI | voyage-4-large | $0.12 |
+| Voyage AI | voyage-4 | $0.06 |
+| Voyage AI | voyage-4-lite | $0.02 |
+| Voyage AI | voyage-context-3 | $0.18 |
+| Voyage AI | voyage-code-3 | $0.18 |
+| NVIDIA NIM | Llama 3.2 NeMo Retriever 300M | Free |
+
+### Table 3: Estimated LLM Cost Per Build
+
+Based on ~291,900 avg input tokens and ~327,300 avg output tokens.
+
+| Model | Input Cost | Output Cost | **Total** |
+|-------|------------|-------------|-----------|
+| gpt-5.2 | $0.511 | $4.583 | **$5.094** |
+| gpt-5.1 | $0.365 | $3.273 | **$3.638** |
+| gpt-5 | $0.365 | $3.273 | **$3.638** |
+| gpt-5-mini | $0.073 | $0.655 | **$0.728** |
+| gpt-5-nano | $0.015 | $0.131 | **$0.146** |
+| Gemini 3 Pro Preview | $0.584 | $3.928 | **$4.512** |
+| Gemini 3 Flash Preview | $0.146 | $0.982 | **$1.128** |
+| Gemini 2.5 Pro | $0.365 | $3.273 | **$3.638** |
+| Gemini 2.5 Flash | $0.088 | $0.818 | **$0.906** |
+| Gemini 2.5 Flash-Lite | $0.029 | $0.131 | **$0.160** |
+| Gemini 2.0 Flash | $0.029 | $0.131 | **$0.160** |
+| Gemini 2.0 Flash-Lite | $0.022 | $0.098 | **$0.120** |
+| Claude Opus 4.6 | $1.460 | $8.184 | **$9.644** |
+| Claude Opus 4.5 | $1.460 | $8.184 | **$9.644** |
+| Claude Opus 4.1 | $4.379 | $24.551 | **$28.930** |
+| Claude Opus 4 | $4.379 | $24.551 | **$28.930** |
+| Claude Sonnet 4.5 | $0.876 | $4.910 | **$5.786** |
+| DeepSeek V3.1 (current) | $0.000 | $0.000 | **$0.000** |
+
+### Table 4: Estimated Embedding Cost Per Build
+
+Based on ~161,200 avg embedding tokens.
+
+| Model | **Total** |
+|-------|-----------|
+| text-embedding-3-small | **$0.003** |
+| text-embedding-3-large | **$0.021** |
+| text-embedding-ada-002 | **$0.016** |
+| gemini-embedding-001 | **$0.024** |
+| voyage-4-large | **$0.019** |
+| voyage-4 | **$0.010** |
+| voyage-4-lite | **$0.003** |
+| voyage-context-3 | **$0.029** |
+| voyage-code-3 | **$0.029** |
+| Llama 3.2 NeMo Retriever 300M (current) | **$0.000** |
+
+---
+
+## Technical Documentation
+
+For a detailed explanation of the entire pipeline architecture, including:
+
+- PDF extraction and semantic chunking
+- Knowledge graph creation with LLM entity extraction
+- Embedding generation and FAISS index building
+- Hybrid RAG retrieval (Vector Search + Graph Expansion)
+- Response generation pipeline
+
+See **[ARCHITECTURE.md](ARCHITECTURE.md)**
+
+---
+
+## TODO
+
+- [x] PDF extraction and semantic chunking
+- [x] Knowledge graph creation with LLM entity extraction
+- [x] Embedding-based entity deduplication
+- [x] FAISS vector index for fast search
+- [x] Hybrid RAG retrieval (vector search + graph traversal)
+- [x] Telegram bot interface with conversation memory
+- [x] Parallel processing with configurable workers
+- [x] Cross-platform support (Windows, macOS, Linux)
+- [x] Automated Docker setup for Linux
+- [x] Retry logic for Memgraph transaction conflicts
+- [x] Run build experiments
+- [x] Calculate average token usage across multiple runs
+- [x] Estimated cost comparison for alternative LLMs
+- [ ] Option to let users use other LLM providers (Eg: Anthropic, OpenAI, Gemini, etc.)
+- [ ] Explore self hosted LLMs and embedding models
 
 ---
 
