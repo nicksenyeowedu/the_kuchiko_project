@@ -4,7 +4,8 @@
       "Bash(docker info:*)",
       "Bash(docker version:*)",
       "Bash(wsl --list:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "WebFetch(domain:build.nvidia.com)"
     ]
   }
 }

@@ -376,6 +376,53 @@ kuchiko/
 
 ---
 
+## Models Used
+
+This project uses three models, each serving a different role in the pipeline:
+
+### 1. DeepSeek V3.1 — LLM for Entity & Relationship Extraction
+
+| | |
+|---|---|
+| **Model** | [deepseek-ai/deepseek-v3.1](https://build.nvidia.com/deepseek-ai/deepseek-v3_1) |
+| **Provider** | NVIDIA NIM (free tier) |
+| **Parameters** | 671B total (37B activated via MoE) |
+| **Context Window** | 128,000 tokens |
+| **Architecture** | Transformer (decoder-only, Mixture of Experts) |
+| **License** | MIT |
+
+**Used for:** Extracting entities and relationships from PDF text (`createKG.py`), refining semantic section boundaries, and generating chatbot responses (`chatbot_telegram.py`).
+
+### 2. Llama 3.2 NeMo Retriever 300M Embed V2 — Text Embedding API
+
+| | |
+|---|---|
+| **Model** | [nvidia/llama-3.2-nemoretriever-300m-embed-v2](https://build.nvidia.com/nvidia/llama-3_2-nemoretriever-300m-embed-v2) |
+| **Provider** | NVIDIA NIM (free tier) |
+| **Parameters** | 300M |
+| **Embedding Dimension** | 2048 (configurable: 384, 512, 768, 1024, 2048) |
+| **Max Input Length** | 8,192 tokens |
+| **Architecture** | Transformer (encoder, 9 layers) |
+| **License** | NVIDIA Community Model License |
+
+**Used for:** Generating vector embeddings for FAISS index (`build_embeddings.py`). These embeddings power the vector search component of the hybrid RAG retrieval.
+
+### 3. all-MiniLM-L6-v2 — Local Embedding Model
+
+| | |
+|---|---|
+| **Model** | [sentence-transformers/all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) |
+| **Provider** | Local (runs on CPU, no API needed) |
+| **Parameters** | 22.7M |
+| **Embedding Dimension** | 384 |
+| **Max Input Length** | 256 word pieces |
+| **Architecture** | MiniLM (distilled transformer) |
+| **License** | Apache 2.0 |
+
+**Used for:** Entity deduplication and page clustering during knowledge graph creation (`createKG.py`). Runs locally with no API cost.
+
+---
+
 ## Technical Documentation
 
 For a detailed explanation of the entire pipeline architecture, including:
