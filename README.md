@@ -449,9 +449,11 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)**
 - [x] Cross-platform support (Windows, macOS, Linux)
 - [x] Automated Docker setup for Linux
 - [x] Retry logic for Memgraph transaction conflicts
-- [ ] Run build experiments across Windows, macOS, and Linux
-- [ ] Calculate average token usage across multiple runs
+- [x] Run build experiments
+- [x] Calculate average token usage across multiple runs
 - [ ] Estimated cost comparison for alternative LLMs
+- [ ] Option to use other LLM providers (Eg: Anthropic, OpenAI, Gemini, etc.)
+
 
 ---
 
@@ -469,37 +471,35 @@ Build statistics from running the full pipeline (PDF extraction, KG creation, FA
 
 ### Token Usage (Per Experiment)
 
-Results from 10 experiments across all platforms.
+Results from 10 experiments across macOS and Windows.
 
 | Exp | LLM Calls | LLM Tokens | Embed Calls | Embed Tokens | Local Embed Calls | Total API Tokens | Build Time |
 |-----|-----------|------------|-------------|--------------|-------------------|-----------------|------------|
-| 1 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 2 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 3 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 4 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 5 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 6 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 7 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 8 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 9 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| 10 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 1 | 650 | 619,864 | 105 | 180,471 | 5,468 | 800,335 | 7m 21s |
+| 2 | 631 | 642,228 | 93 | 155,736 | 5,483 | 797,964 | 6m 16s |
+| 3 | 638 | 623,038 | 98 | 161,025 | 5,673 | 784,063 | 6m 3s |
+| 4 | 628 | 619,170 | 97 | 158,958 | 5,570 | 778,128 | 7m 16s |
+| 5 | 610 | 615,709 | 99 | 163,304 | 5,713 | 779,013 | 6m 39s |
+| 6 | 638 | 630,910 | 100 | 165,324 | 5,781 | 796,234 | 8m 6s |
+| 7 | 613 | 597,661 | 91 | 151,896 | 5,255 | 749,557 | 7m 7s |
+| 8 | 628 | 623,414 | 98 | 160,641 | 5,657 | 784,055 | 7m 53s |
+| 9 | 624 | 612,289 | 97 | 160,007 | 5,564 | 772,296 | 10m 10s |
+| 10 | 629 | 608,357 | 93 | 154,346 | 5,418 | 762,697 | 10m 35s |
 
 ### Average Token Usage (All Experiments)
 
 | Component | Avg API Calls | Avg Tokens | Avg Time/Call |
 |-----------|---------------|------------|---------------|
-| LLM Chat Completions (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
-| Embedding API (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
-| Local Embeddings (sentence-transformers) | _TBD_ | N/A (no API cost) | _TBD_ |
-| **Grand Total** | | _TBD_ | |
+| LLM Chat Completions (NVIDIA NIM) | 629 | 619,264 | _TBD_ |
+| Embedding API (NVIDIA NIM) | 97 | 161,171 | _TBD_ |
+| Local Embeddings (sentence-transformers) | 5,558 | N/A (no API cost) | _TBD_ |
+| **Grand Total** | | **780,434** | |
 
-### Average Build Time by Platform
+### Build Time (All Experiments)
 
-| Platform | Exp 1 | Exp 2 | Exp 3 | Exp 4 | Exp 5 | Average |
-|----------|-------|-------|-------|-------|-------|---------|
-| Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Exp 1 | Exp 2 | Exp 3 | Exp 4 | Exp 5 | Exp 6 | Exp 7 | Exp 8 | Exp 9 | Exp 10 | **Average** |
+|-------|-------|-------|-------|-------|-------|-------|-------|-------|--------|-------------|
+| 7m 21s | 6m 16s | 6m 3s | 7m 16s | 6m 39s | 8m 6s | 7m 7s | 7m 53s | 10m 10s | 10m 35s | **7m 45s** |
 
 ---
 
@@ -513,7 +513,7 @@ If you were to use a paid LLM instead of the NVIDIA NIM free tier, the estimated
 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
-> Costs calculated based on average token usage of _TBD_ total API tokens per build.
+> Costs calculated based on average token usage of ~780,000 total API tokens per build (~619,000 LLM + ~161,000 embedding).
 
 ---
 
