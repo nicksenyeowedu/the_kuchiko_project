@@ -457,26 +457,54 @@ See **[ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ## Build Statistics
 
-Build statistics from running the full pipeline (PDF extraction, KG creation, FAISS index) on a sample PDF document.
+Build statistics from running the full pipeline (PDF extraction, KG creation, FAISS index).
 
-> **Note:** These numbers are averages across multiple runs. Results vary based on PDF size, content complexity, and network conditions.
+### Test Configuration
 
-### Token Usage
+| Variable | Value |
+|----------|-------|
+| `MAX_WORKERS` | 20 |
+| PDF pages | 114 |
+| PDF word count | ~25,900 words |
 
-| Component | API Calls | Tokens | Avg Time/Call |
-|-----------|-----------|--------|---------------|
+### Token Usage (Per Experiment)
+
+Results from 10 experiments across all platforms.
+
+| Exp | Platform | LLM Calls | LLM Tokens | Embed Calls | Embed Tokens | Local Embed Calls | Total API Tokens | Build Time |
+|-----|----------|-----------|------------|-------------|--------------|-------------------|-----------------|------------|
+| 1 | Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 2 | Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 3 | Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 4 | Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 5 | Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 6 | macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 7 | macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 8 | macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 9 | macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 10 | macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 11 | Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 12 | Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 13 | Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 14 | Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| 15 | Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
+### Average Token Usage (All Experiments)
+
+| Component | Avg API Calls | Avg Tokens | Avg Time/Call |
+|-----------|---------------|------------|---------------|
 | LLM Chat Completions (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
 | Embedding API (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
 | Local Embeddings (sentence-transformers) | _TBD_ | N/A (no API cost) | _TBD_ |
 | **Grand Total** | | _TBD_ | |
 
-### Build Time by Platform
+### Average Build Time by Platform
 
-| Platform | Total Build Time | Notes |
-|----------|-----------------|-------|
-| Windows | _TBD_ | |
-| macOS | _TBD_ | |
-| Linux | _TBD_ | |
+| Platform | Exp 1 | Exp 2 | Exp 3 | Exp 4 | Exp 5 | Average |
+|----------|-------|-------|-------|-------|-------|---------|
+| Windows | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| macOS | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| Linux | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
 
 ---
 
