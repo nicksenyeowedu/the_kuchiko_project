@@ -90,6 +90,13 @@ That's it! The script will:
 4. Build and launch all services
 5. Show you the logs
 
+**Viewing build progress:**
+- **Windows:** Build progress is shown directly in the terminal.
+- **Linux/macOS:** The script runs in detached mode. To see build progress, open a **second terminal** and run:
+  ```bash
+  docker-compose logs -f
+  ```
+
 **First time running?**
 - **Linux:** If Docker was just installed, you may need to run `newgrp docker` or log out/in for permissions
 - **Windows/macOS:** Make sure Docker Desktop is running before executing the script
@@ -380,6 +387,63 @@ For a detailed explanation of the entire pipeline architecture, including:
 - Response generation pipeline
 
 See **[ARCHITECTURE.md](ARCHITECTURE.md)**
+
+---
+
+## TODO
+
+- [x] PDF extraction and semantic chunking
+- [x] Knowledge graph creation with LLM entity extraction
+- [x] Embedding-based entity deduplication
+- [x] FAISS vector index for fast search
+- [x] Hybrid RAG retrieval (vector search + graph traversal)
+- [x] Telegram bot interface with conversation memory
+- [x] Parallel processing with configurable workers
+- [x] Cross-platform support (Windows, macOS, Linux)
+- [x] Automated Docker setup for Linux
+- [x] Retry logic for Memgraph transaction conflicts
+- [ ] Run build experiments across Windows, macOS, and Linux
+- [ ] Calculate average token usage across multiple runs
+- [ ] Estimated cost comparison for alternative LLMs
+
+---
+
+## Build Statistics
+
+Build statistics from running the full pipeline (PDF extraction, KG creation, FAISS index) on a sample PDF document.
+
+> **Note:** These numbers are averages across multiple runs. Results vary based on PDF size, content complexity, and network conditions.
+
+### Token Usage
+
+| Component | API Calls | Tokens | Avg Time/Call |
+|-----------|-----------|--------|---------------|
+| LLM Chat Completions (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
+| Embedding API (NVIDIA NIM) | _TBD_ | _TBD_ | _TBD_ |
+| Local Embeddings (sentence-transformers) | _TBD_ | N/A (no API cost) | _TBD_ |
+| **Grand Total** | | _TBD_ | |
+
+### Build Time by Platform
+
+| Platform | Total Build Time | Notes |
+|----------|-----------------|-------|
+| Windows | _TBD_ | |
+| macOS | _TBD_ | |
+| Linux | _TBD_ | |
+
+---
+
+## Estimated Cost (Alternative LLMs)
+
+If you were to use a paid LLM instead of the NVIDIA NIM free tier, the estimated cost per build would be:
+
+| Provider | Model | Input Cost | Output Cost | Estimated Total |
+|----------|-------|------------|-------------|-----------------|
+| NVIDIA NIM | DeepSeek V3.1 | Free | Free | **$0.00** |
+| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
+> Costs calculated based on average token usage of _TBD_ total API tokens per build.
 
 ---
 

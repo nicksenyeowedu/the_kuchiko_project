@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker info:*)",
       "Bash(docker version:*)",
-      "Bash(wsl --list:*)"
+      "Bash(wsl --list:*)",
+      "Bash(git rm:*)"
     ]
   }
 }
