@@ -297,12 +297,6 @@ echo -e "${BLUE}Building and starting containers...${NC}"
 echo -e "${YELLOW}(This may take a few minutes on first run)${NC}"
 echo ""
 
-$COMPOSE_CMD up -d --build
-
-echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   ✅ Kuchiko is starting up!${NC}"
-echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "The bot is initializing. This includes:"
 echo "  1. Starting Memgraph database"
@@ -313,12 +307,11 @@ echo ""
 echo -e "${YELLOW}First-time setup can take 5-10 minutes.${NC}"
 echo ""
 echo "Useful commands:"
-echo "  View logs:     $COMPOSE_CMD logs -f"
-echo "  Stop bot:      $COMPOSE_CMD down"
+echo "  Stop bot:      Ctrl+C, then: $COMPOSE_CMD down"
 echo "  Restart:       $COMPOSE_CMD restart"
 echo ""
-echo -e "${BLUE}Watching logs (Ctrl+C to exit)...${NC}"
+echo -e "${BLUE}Building and starting containers (Ctrl+C to stop)...${NC}"
 echo ""
 
-# Follow logs
-$COMPOSE_CMD logs -f
+# Run in foreground so build progress + logs are visible in this terminal
+$COMPOSE_CMD up --build

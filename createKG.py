@@ -312,10 +312,19 @@ def recursive_cluster_pages(pages: List[str]) -> List[List[int]]:
     
     # Generate embeddings for page summaries (first 500 chars)
     page_embeddings = []
-    for p in pages:
+    total_pages = len(pages)
+    for i, p in enumerate(pages):
         summary = p[:500] if p else ""
         emb = get_embedding(summary)
         page_embeddings.append(emb)
+        pct = int((i + 1) / total_pages * 100)
+        bar_len = 30
+        filled = int(bar_len * (i + 1) / total_pages)
+        bar = '█' * filled + '░' * (bar_len - filled)
+        sys.stdout.write(f'\r  Clustering pages: |{bar}| {pct}% ({i + 1}/{total_pages})')
+        sys.stdout.flush()
+    sys.stdout.write('\n')
+    sys.stdout.flush()
     
     # Simple hierarchical clustering: group consecutive similar pages
     clusters = []
@@ -683,15 +692,40 @@ def process_pdf(path: str, max_workers: int = 4):
         merged = "\n\n---PAGE_BREAK---\n\n".join([pages[idx] for idx in cluster])
         segments.append({'indices': cluster, 'text': merged})
 
-    # Process segments in parallel
+    # Process segments in parallel with progress tracking
     tracker.start_step("KG Extraction & Insertion")
+    total_segments = len(segments)
+    completed_count = 0
+    success_count = 0
+
+    def print_progress(completed, total, success):
+        pct = int(completed / total * 100) if total else 100
+        bar_len = 30
+        filled = int(bar_len * completed / total) if total else bar_len
+        bar = '█' * filled + '░' * (bar_len - filled)
+        sys.stdout.write(f'\r  Progress: |{bar}| {pct}% ({completed}/{total} segments, {success} OK)')
+        sys.stdout.flush()
+        if completed == total:
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+
+    logger.info(f"Processing {total_segments} segments...")
+    print_progress(0, total_segments, 0)
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_segment, seg, doc_id) for seg in segments]
-        results = [f.result() for f in as_completed(futures)]
+        futures = {executor.submit(process_segment, seg, doc_id): i for i, seg in enumerate(segments)}
+        results = [None] * total_segments
+        for future in as_completed(futures):
+            idx = futures[future]
+            result = future.result()
+            results[idx] = result
+            completed_count += 1
+            if result:
+                success_count += 1
+            print_progress(completed_count, total_segments, success_count)
     tracker.end_step("KG Extraction & Insertion")
 
-    processed = sum(1 for r in results if r)
-    logger.info(f"Successfully processed {processed}/{len(segments)} segments")
+    logger.info(f"Successfully processed {success_count}/{total_segments} segments")
     
     # Collect final statistics from Memgraph
     with driver.session() as session:
